@@ -11,7 +11,7 @@ import SwiftUI
 struct marketApp: App {
     var body: some Scene {
         WindowGroup {
-            WatchMarketView()
+            tabView()
         }
     }
 }

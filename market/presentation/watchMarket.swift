@@ -125,105 +125,110 @@ struct WatchMarketView: View {
     }
     
     func listView() -> some View {
-        ScrollView {
-            if data.data != nil {
-                ForEach(data.data!, id: \.id) { item in
-                    NavigationLink(destination: DetailMarketView(data: item))
-                    {
-                        HStack {
-                            AsyncImage(
-                                url: URL(string: item.icon ?? "")!,
-                                
-                                placeholder: { Text("Loading ...") },
-                                
-                                image: {
-                                    Image(uiImage: $0)
-                                        .resizable()
+        ScrollViewReader { scrollViewProxy in
+            ScrollView {
+                if data.data != nil {
+                    ForEach(data.data!, id: \.id) { item in
+                        NavigationLink(destination: DetailMarketView(data: item))
+                        {
+                            HStack {
+                                AsyncImage(
+                                    url: URL(string: item.icon ?? "")!,
+                                    
+                                    placeholder: { Text("Loading ...") },
+                                    
+                                    image: {
+                                        Image(uiImage: $0)
+                                            .resizable()
+                                    }
+                                )
+                                .frame(width: 40, height: 40)
+                                VStack(alignment: .leading) {
+                                    Text(item.symbol ?? "")
+                                        .bold()
+                                        .lineLimit(1)
+                                        .foregroundColor(.black)
+                                        .frame(width: 50, alignment: .leading)
+                                    Text(item.name ?? "")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                        .frame(width: 50, alignment: .leading)
                                 }
-                            )
-                            .frame(width: 40, height: 40)
-                            VStack(alignment: .leading) {
-                                Text(item.symbol ?? "")
-                                    .bold()
-                                    .lineLimit(1)
-                                    .foregroundColor(.black)
-                                    .frame(width: 50, alignment: .leading)
-                                Text(item.name ?? "")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                                    .lineLimit(1)
-                                    .frame(width: 50, alignment: .leading)
-                            }
-                            SVGImageView(url:URL(string: "https://s3.coinmarketcap.com/generated/sparklines/web/30d/2781/\(item.id ?? 0).svg")!, size: CGSize(width: 10, height: 2))
-                                .colorMultiply(item.quote?.percentChange24h ?? 0.0 > 0 ? .green : .red)
-                            Spacer()
-                            VStack(alignment: .trailing) {
-                                Text("\((item.quote?.price ?? 0.0), specifier: "%.3f")")
-                                    .bold()
-                                    .font(.subheadline)
-                                    .lineLimit(1)
-                                    .foregroundColor(.black)
-                                    .frame(width: 80, alignment: .trailing)
-                                Text("\((item.quote?.percentChange7d ?? 0.0), specifier: "%.3f")%")
-                                    .font(.subheadline)
-                                    .foregroundColor(item.quote?.percentChange7d ?? 0.0 > 0 ? .green : .red)
-                                    .lineLimit(1)
-                                    .frame(width: 80, alignment: .trailing)
+                                SVGImageView(url:URL(string: "https://s3.coinmarketcap.com/generated/sparklines/web/30d/2781/\(item.id ?? 0).svg")!, size: CGSize(width: 10, height: 2))
+                                    .colorMultiply(item.quote?.percentChange24h ?? 0.0 > 0 ? .green : .red)
+                                Spacer()
+                                VStack(alignment: .trailing) {
+                                    Text("\((item.quote?.price ?? 0.0), specifier: "%.3f")")
+                                        .bold()
+                                        .font(.subheadline)
+                                        .lineLimit(1)
+                                        .foregroundColor(.black)
+                                        .frame(width: 80, alignment: .trailing)
+                                    Text("\((item.quote?.percentChange7d ?? 0.0), specifier: "%.3f")%")
+                                        .font(.subheadline)
+                                        .foregroundColor(item.quote?.percentChange7d ?? 0.0 > 0 ? .green : .red)
+                                        .lineLimit(1)
+                                        .frame(width: 80, alignment: .trailing)
+                                        .onAppear {
+                                            if item.id == data.data?[(data.data?.count ?? 1) - 1].id {
+                                                print("loading...")
+                                            }
+                                        }
+                                }
                             }
                         }
                     }
+                    .padding([.leading,.trailing], 20)
+                    Button(action: {
+                        fetchData()
+                    }, label: {
+                        Text("Load more")
+                    })
                 }
-                .padding([.leading,.trailing], 20)
-                Button(action: {
-                    fetchData()
-                }, label: {
-                    Text("Load more")
-                })
             }
         }
     }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                VStack {
-                    //Search
-                    searchView()
-                    
-                    //Sort
-                    sortView()
-                    
-                    //List
-                    listView()
-                    
+        ZStack {
+            VStack {
+                //Search
+                searchView()
+                
+                //Sort
+                sortView()
+                
+                //List
+                listView()
+                
+            }
+            .onAppear {
+                page = 1
+                fetchData()
+            }
+            .onReceive(timer, perform: { time in
+                if timeRemaining > 0 {
+                    withAnimation(.easeInOut(duration: 1)) {
+                        timeRemaining -= 1
+                    }
+                    print(timeRemaining)
                 }
-                .onAppear {
+                if timeRemaining == 0 {
+                    timeRemaining -= 1
                     page = 1
                     fetchData()
                 }
-                .onReceive(timer, perform: { time in
-                    if timeRemaining > 0 {
-                        withAnimation(.easeInOut(duration: 1)) {
-                            timeRemaining -= 1
-                        }
-                        print(timeRemaining)
-                    }
-                    if timeRemaining == 0 {
-                        timeRemaining -= 1
-                        page = 1
-                        fetchData()
-                    }
-                    
-                })
-                if isLoading {
-                    Color.black.opacity(0.1)
-                        .edgesIgnoringSafeArea(.all)
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle())
-                        .foregroundColor(.white)
-                    
-                    
-                }
+                
+            })
+            if isLoading {
+                Color.black.opacity(0.1)
+                    .edgesIgnoringSafeArea(.all)
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .foregroundColor(.white)
+                
+                
             }
         }
     }
