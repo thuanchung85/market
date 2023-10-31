@@ -19,6 +19,7 @@ struct WatchMarketView: View {
     @State var data = MartketData()
     @State private var timeRemaining = -1
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
     func fetchData() {
         isLoading = true
         guard var urlComponents = URLComponents(string: "https://api-dev-poolswallet.poolsmobility.com/pools-wallet/market") else {
@@ -123,68 +124,67 @@ struct WatchMarketView: View {
         .padding(10)
         .padding([.leading,.trailing],10)
     }
-    
+    func itemView(_ item: MartketItemData) -> some View {
+        NavigationLink(destination: DetailMarketView(data: item))
+        {
+            HStack {
+                AsyncImage(
+                    url: URL(string: item.icon ?? "")!,
+                    
+                    placeholder: { Text("Loading ...") },
+                    
+                    image: {
+                        Image(uiImage: $0)
+                            .resizable()
+                    }
+                )
+                .frame(width: 40, height: 40)
+                VStack(alignment: .leading) {
+                    Text(item.symbol ?? "")
+                        .bold()
+                        .lineLimit(1)
+                        .foregroundColor(.black)
+                        .frame(width: 50, alignment: .leading)
+                    Text(item.name ?? "")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                        .frame(width: 50, alignment: .leading)
+                }
+                SVGImageView(url:URL(string: "https://s3.coinmarketcap.com/generated/sparklines/web/30d/2781/\(item.id ?? 0).svg")!, size: CGSize(width: 10, height: 2))
+                    .colorMultiply(item.quote?.percentChange24h ?? 0.0 > 0 ? .green : .red)
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Text("\((item.quote?.price ?? 0.0), specifier: "%.3f")")
+                        .bold()
+                        .font(.subheadline)
+                        .lineLimit(1)
+                        .foregroundColor(.black)
+                        .frame(width: 80, alignment: .trailing)
+                    Text("\((item.quote?.percentChange7d ?? 0.0), specifier: "%.3f")%")
+                        .font(.subheadline)
+                        .foregroundColor(item.quote?.percentChange7d ?? 0.0 > 0 ? .green : .red)
+                        .lineLimit(1)
+                        .frame(width: 80, alignment: .trailing)
+                }
+            }
+        }
+    }
     func listView() -> some View {
-        ScrollViewReader { scrollViewProxy in
-            ScrollView {
+        ScrollView {
+            LazyVStack {
                 if data.data != nil {
                     ForEach(data.data!, id: \.id) { item in
-                        NavigationLink(destination: DetailMarketView(data: item))
-                        {
-                            HStack {
-                                AsyncImage(
-                                    url: URL(string: item.icon ?? "")!,
-                                    
-                                    placeholder: { Text("Loading ...") },
-                                    
-                                    image: {
-                                        Image(uiImage: $0)
-                                            .resizable()
-                                    }
-                                )
-                                .frame(width: 40, height: 40)
-                                VStack(alignment: .leading) {
-                                    Text(item.symbol ?? "")
-                                        .bold()
-                                        .lineLimit(1)
-                                        .foregroundColor(.black)
-                                        .frame(width: 50, alignment: .leading)
-                                    Text(item.name ?? "")
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                        .lineLimit(1)
-                                        .frame(width: 50, alignment: .leading)
-                                }
-                                SVGImageView(url:URL(string: "https://s3.coinmarketcap.com/generated/sparklines/web/30d/2781/\(item.id ?? 0).svg")!, size: CGSize(width: 10, height: 2))
-                                    .colorMultiply(item.quote?.percentChange24h ?? 0.0 > 0 ? .green : .red)
-                                Spacer()
-                                VStack(alignment: .trailing) {
-                                    Text("\((item.quote?.price ?? 0.0), specifier: "%.3f")")
-                                        .bold()
-                                        .font(.subheadline)
-                                        .lineLimit(1)
-                                        .foregroundColor(.black)
-                                        .frame(width: 80, alignment: .trailing)
-                                    Text("\((item.quote?.percentChange7d ?? 0.0), specifier: "%.3f")%")
-                                        .font(.subheadline)
-                                        .foregroundColor(item.quote?.percentChange7d ?? 0.0 > 0 ? .green : .red)
-                                        .lineLimit(1)
-                                        .frame(width: 80, alignment: .trailing)
-                                        .onAppear {
-                                            if item.id == data.data?[(data.data?.count ?? 1) - 1].id {
-                                                print("loading...")
-                                            }
-                                        }
-                                }
-                            }
+                        itemView(item)
+                           
+                        if item.id == data.data?[(data.data?.count ?? 3) - 3].id {
+                            ProgressView()
+                                .padding()
+                                .onAppear(perform: fetchData)
                         }
+                        
                     }
                     .padding([.leading,.trailing], 20)
-                    Button(action: {
-                        fetchData()
-                    }, label: {
-                        Text("Load more")
-                    })
                 }
             }
         }
